@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D/2D Live Fleet Navigation with Satellite Toggle</title>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0b0c0e;
+            touch-action: manipulation;
+        }
+
+        #map {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ===========================
+   TOP NAVIGATION
+=========================== */
+
+        .nav-header {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            z-index: 100;
+
+            display: flex;
+            align-items: center;
+            gap: 16px;
+
+            padding: 16px 18px;
+
+            background: #00564d;
+            color: #fff;
+
+            border-radius: 18px;
+
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+        }
+
+        .turn-icon-container {
+            font-size: 36px;
+            animation: pulse 2s infinite;
+        }
+
+        .nav-text-block {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .nav-direction {
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #bde3dc;
+        }
+
+        .nav-street {
+            font-size: 24px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-search {
+            display: none;
+            gap: 10px;
+        }
+
+        .search-input {
+            width: 230px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 30px;
+            outline: none;
+            font-size: 16px;
+        }
+
+        .search-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            background: #34a853;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .menu-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            cursor: pointer;
+            font-size: 24px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            display: none;
+        }
+
+        .menu-overlay.active {
+            display: block;
+        }
+
+        .menu-panel {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background: white;
+            z-index: 250;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, .2);
+        }
+
+        .menu-panel.active {
+            right: 0;
+        }
+
+        .menu-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .menu-content {
+            padding: 60px 16px 16px;
+        }
+
+        .menu-section {
+            margin-bottom: 24px;
+        }
+
+        .menu-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .menu-search-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .menu-search-input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .menu-search-btn {
+            padding: 10px 16px;
+            background: #34a853;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .menu-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .menu-option-label {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .menu-toggle {
+            width: 50px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        .menu-toggle.active {
+            background: #34a853;
+        }
+
+        .menu-toggle::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+
+        .menu-toggle.active::after {
+            left: 24px;
+        }
+
+        /* ===========================
+   RIGHT BUTTONS
+=========================== */
+
+        .control-dock {
+            position: fixed;
+            right: 16px;
+            top: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .dock-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            background: white;
+            font-size: 22px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .25);
+        }
+
+        .active-mode {
+            background: #1a73e8;
+            color: white;
+        }
+
+        /* ===========================
+   RECENTER BUTTON
+=========================== */
+
+        .btn-recenter {
+            position: fixed;
+            left: 20px;
+            bottom: 115px;
+
+            z-index: 100;
+
+            padding: 14px 22px;
+
+            border: none;
+
+            border-radius: 30px;
+
+            background: white;
+
+            color: #00564d;
+
+            font-size: 15px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .25);
+        }
+
+        /* ===========================
+   BOTTOM PANEL
+=========================== */
+
+        .nav-bottom-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            z-index: 100;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            background: white;
+
+            border-radius: 25px 25px 0 0;
+
+            padding: 20px 24px;
+
+            box-shadow: 0 -10px 25px rgba(0, 0, 0, .2);
+        }
+
+        .metrics-left {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .eta-time {
+            font-size: 28px;
+            color: #1e7e34;
+            font-weight: 800;
+        }
+
+        .trip-summary {
+            margin-top: 4px;
+            color: #666;
+            font-size: 15px;
+        }
+
+        .btn-exit {
+            border: none;
+            background: #d93025;
+            color: white;
+            padding: 14px 26px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        /* ===========================
+   MARKERS
+=========================== */
+
+        .premium-legend {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1a73e8;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            border: 3px solid white;
+            box-shadow: 0 5px 12px rgba(0, 0, 0, .4);
+        }
+
+        .truck-icon-3d {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #1a73e8;
+            border: 4px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ===========================
+   MOBILE
+=========================== */
+
+        @media(max-width:768px) {
+
+            .nav-header {
+                top: 8px;
+                left: 8px;
+                right: 56px;
+                padding: 12px 14px;
+                gap: 8px;
+                flex-wrap: nowrap;
+            }
+
+            .turn-icon-container {
+                font-size: 28px;
+                flex-shrink: 0;
+            }
+
+            .nav-text-block {
+                width: auto;
+                flex: 1;
+                min-width: 0;
+            }
+
+            .nav-direction {
+                font-size: 11px;
+            }
+
+            .nav-street {
+                font-size: 16px;
+            }
+
+            .nav-search {
+                display: none;
+            }
+
+            .search-input {
+                flex: 1;
+                width: auto;
+            }
+
+            .search-btn {
+                width: 90px;
+            }
+
+            .menu-btn {
+                position: fixed;
+                top: 12px;
+                right: 12px;
+                width: 48px;
+                height: 48px;
+                z-index: 101;
+            }
+
+            .control-dock {
+                display: none;
+            }
+
+            .dock-btn {
+                display: none;
+            }
+
+            .btn-recenter {
+                left: 12px;
+                bottom: 120px;
+                padding: 12px 16px;
+                font-size: 13px;
+                transform: none;
+            }
+
+            .nav-bottom-panel {
+                padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+            }
+
+            .eta-time {
+                font-size: 22px;
+            }
+
+            .trip-summary {
+                font-size: 13px;
+            }
+
+            .btn-exit {
+                padding: 12px 18px;
+            }
+
+            .premium-legend {
+                width: 46px;
+                height: 46px;
+                font-size: 20px;
+            }
+
+        }
+
+        /* ===========================
+   ANIMATION
+=========================== */
+
+        @keyframes pulse {
+
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div class="nav-header">
+        <div class="turn-icon-container" id="hud-arrow">⬆</div>
+        <div class="nav-text-block">
+            <div class="nav-direction" id="hud-direction">towards</div>
+            <div class="nav-street" id="hud-street">Calculating Route...</div>
+        </div>
+        <div class="nav-search">
+            <input id="address-search" class="search-input" type="text" placeholder="Search address or place"
+                onkeydown="if(event.key === 'Enter'){ searchAddress(); }">
+            <button class="search-btn" onclick="searchAddress()">Search</button>
+        </div>
+    </div>
+
+    <button class="menu-btn" onclick="toggleMenu()">⋯</button>
+
+    <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
+
+    <div class="menu-panel" id="menu-panel">
+        <button class="menu-close" onclick="toggleMenu()">✕</button>
+        <div class="menu-content">
+            <div class="menu-section">
+                <div class="menu-section-title">Search Destination</div>
+                <div class="menu-search-group">
+                    <input id="menu-address-search" class="menu-search-input" type="text" placeholder="Enter address"
+                        onkeydown="if(event.key === 'Enter'){ searchAddressFromMenu(); }">
+                    <button class="menu-search-btn" onclick="searchAddressFromMenu()">Go</button>
+                </div>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-section-title">Display Options</div>
+                <div class="menu-option">
+                    <span class="menu-option-label">Satellite View</span>
+                    <button class="menu-toggle" id="satellite-toggle" onclick="toggleMapStyleFromMenu()"></button>
+                </div>
+                <div class="menu-option">
+                    <span class="menu-option-label">3D View</span>
+                    <button class="menu-toggle active" id="view-toggle-menu"
+                        onclick="togglePerspectiveFromMenu()"></button>
+                </div>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-option" style="border-bottom: none; cursor: default;">
+                    <button class="menu-option-label"
+                        style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 24px; cursor: pointer; font-weight: 600;"
+                        onclick="location.reload()">Exit Navigation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-dock">
+        <button class="dock-btn" id="style-toggle" onclick="toggleMapStyle()"
+            title="Toggle Satellite Layer">🗺️</button>
+        <button class="dock-btn" id="view-toggle" onclick="togglePerspective()" title="Toggle 2D/3D Mode">3D</button>
+    </div>
+
+    <button class="btn-recenter" onclick="relockCameraToDriver()">▲ Re-centre</button>
+
+    <div class="nav-bottom-panel">
+        <div class="metrics-left">
+            <div class="eta-time" id="hud-eta">-- min</div>
+            <div class="trip-summary" id="hud-details">-- km • -- PM</div>
+        </div>
+        <button class="btn-exit" onclick="location.reload()">Exit</button>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoieW9nZXNoLTIyIiwiYSI6ImNtcW55Y2F3cjB5cnMyc3M3ZnlwdDZ0aG4ifQ.QQrgGldEV7GoXwri2h_ShA';
+
+        var map;
+        var driverMarker = null;
+        var destinationMarker = null;
+        var isCameraLocked = true;
+        var isAutoMoving = false; // Flag to track automatic movements
+        var currentStyle = 'streets'; // 'streets' or 'satellite'
+        var currentPerspective = '3D'; // '3D' or '2D'
+        var lastRouteGeometry = null;
+        var currentDestination = null;
+
+        var deliveryStops = [
+            { id: 1, lng: 14.2905, lat: 48.3032, name: "Kapuzinerstraße 28" },
+            { id: 2, lng: 14.2882, lat: 48.3054, name: "Stop 2" }
+        ];
+
+        // Initialize Map Engine using detailed streets
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [14.2900, 48.3030],
+            zoom: 18.5,
+            pitch: 55,
+            bearing: 0
+        });
+
+        map.on('load', function () {
+            setupMapLayers();
+            startLive3DNavigationLoop();
+            setupMapInteractionDetection();
+        });
+
+        // Detect user interactions and unlock camera
+        function setupMapInteractionDetection() {
+            map.on('movestart', function () {
+                if (!isAutoMoving) {
+                    isCameraLocked = false;
+                }
+            });
+
+            map.on('zoomstart', function () {
+                if (!isAutoMoving) {
+                    isCameraLocked = false;
+                }
+            });
+        }
+
+        // Configures structural map layers, bold numbers, and 3D shapes
+        function setupMapLayers() {
+            var layers = map.getStyle().layers;
+
+            // 1. Force the house and building text numbers to appear ultra bold using native fonts
+            layers.forEach(function (layer) {
+                if (layer.id.includes('building-number') || layer.id.includes('housenumber')) {
+                    map.setPaintProperty(layer.id, 'text-color', '#1a1c1e');
+                    map.setPaintProperty(layer.id, 'text-halo-color', '#ffffff');
+                    map.setPaintProperty(layer.id, 'text-halo-width', 2);
+
+                    // Switches font layout rules directly to ultra-bold variant parameters
+                    if (map.getLayoutProperty(layer.id, 'text-font')) {
+                        map.setLayoutProperty(layer.id, 'text-size', 14);
+                    }
+                }
+            });
+
+            // 2. Add 3D Building extrusion meshes if we are on the streets layout
+            if (currentStyle === 'streets') {
+                var labelLayerId;
+                for (var i = 0; i < layers.length; i++) {
+                    if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+                        labelLayerId = layers[i].id;
+                        break;
+                    }
+                }
+                map.addLayer({
+                    'id': '3d-buildings',
+                    'source': 'composite',
+                    'source-layer': 'building',
+                    'filter': ['==', 'extrude', 'true'],
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+                        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']],
+                        'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'min_height']],
+                        'fill-extrusion-opacity': 0.4
+                    }
+                }, labelLayerId);
+            }
+
+            // 3. Re-draw route path if it exists to maintain navigation through style swaps
+            if (lastRouteGeometry) {
+                renderRouteLineOverlay(lastRouteGeometry);
+            }
+
+            // 4. Drop destination indicators onto map panel surface
+            deliveryStops.forEach(function (stop) {
+                var el = document.createElement('div');
+                el.className = 'premium-legend';
+                el.innerText = stop.id;
+
+                new mapboxgl.Marker(el)
+                    .setLngLat([stop.lng, stop.lat])
+                    .addTo(map);
+            });
+        }
+
+        // Toggles between High Detail Vector Streets and Detailed Hybrid Satellite
+        function toggleMapStyle() {
+            var btn = document.getElementById('style-toggle');
+            if (currentStyle === 'streets') {
+                currentStyle = 'satellite';
+                btn.classList.add('active-mode');
+                // Uses hybrid style to preserve house numbers and labels over satellite imagery
+                map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+            } else {
+                currentStyle = 'streets';
+                btn.classList.remove('active-mode');
+                map.setStyle('mapbox://styles/mapbox/streets-v12');
+            }
+
+            // Re-bind assets once new style finishes loading
+            map.once('style.load', function () {
+                setupMapLayers();
+            });
+        }
+
+        // Switches dynamic tracking modes between a flat 2D layout and tilted 3D grid
+        function togglePerspective() {
+            var btn = document.getElementById('view-toggle');
+            if (currentPerspective === '3D') {
+                currentPerspective = '2D';
+                btn.innerText = '2D';
+                btn.classList.add('active-mode');
+            } else {
+                currentPerspective = '3D';
+                btn.innerText = '3D';
+                btn.classList.remove('active-mode');
+            }
+
+            // Instantly updates lens viewport to sync camera profile parameters
+            if (driverMarker && isCameraLocked) {
+                var loc = driverMarker.getLngLat();
+                map.easeTo({
+                    center: [loc.lng, loc.lat],
+                    pitch: (currentPerspective === '3D') ? 55 : 0,
+                    zoom: 18.5,
+                    duration: 800
+                });
+            }
+        }
+
+        function startLive3DNavigationLoop() {
+            if (!navigator.geolocation) {
+                document.getElementById('hud-street').innerText = 'GPS unavailable';
+                return;
+            }
+
+            navigator.geolocation.watchPosition(function (position) {
+                var lng = position.coords.longitude;
+                var lat = position.coords.latitude;
+                var heading = position.coords.heading || 0;
+
+                if (!driverMarker) {
+                    var carEl = document.createElement('div');
+                    carEl.className = 'truck-icon-3d';
+                    driverMarker = new mapboxgl.Marker(carEl)
+                        .setLngLat([lng, lat])
+                        .addTo(map);
+                } else {
+                    driverMarker.setLngLat([lng, lat]);
+                }
+
+                if (isCameraLocked) {
+                    isAutoMoving = true;
+                    map.easeTo({
+                        center: [lng, lat],
+                        pitch: (currentPerspective === '3D') ? 55 : 0,
+                        zoom: 18.5,
+                        bearing: heading,
+                        duration: 600
+                    });
+                    setTimeout(function () {
+                        isAutoMoving = false;
+                    }, 700);
+                }
+
+                updateNavigationHUD(lat, lng);
+                if (currentDestination) {
+                    drawSimpleRoute([lng, lat], [currentDestination.lng, currentDestination.lat]);
+                }
+            }, function (error) {
+                console.warn('Geolocation error:', error.message);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 3000,
+                timeout: 10000
+            });
+        }
+
+        function drawSimpleRoute(origin, destination) {
+            var directionsUrl = 'https://api.mapbox.com/directions/v5/mapbox/driving/' +
+                origin[0] + ',' + origin[1] + ';' + destination[0] + ',' + destination[1] +
+                '?geometries=geojson&overview=full&access_token=' + mapboxgl.accessToken;
+
+            fetch(directionsUrl)
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data.routes || !data.routes.length) return;
+                    var routeGeoJSON = {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: data.routes[0].geometry
+                    };
+
+                    lastRouteGeometry = routeGeoJSON;
+
+                    if (map.getSource('navigation-route')) {
+                        map.getSource('navigation-route').setData(routeGeoJSON);
+                    } else {
+                        map.addSource('navigation-route', {
+                            type: 'geojson',
+                            data: routeGeoJSON
+                        });
+
+                        map.addLayer({
+                            id: 'navigation-route',
+                            type: 'line',
+                            source: 'navigation-route',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': '#1a73e8',
+                                'line-width': 6,
+                                'line-opacity': 0.9
+                            }
+                        });
+                    }
+                })
+                .catch(function (error) {
+                    console.warn('Routing request failed:', error);
+                });
+        }
+
+        function renderRouteLineOverlay(routeGeometry) {
+            if (!routeGeometry) return;
+            if (map.getSource('navigation-route')) {
+                map.getSource('navigation-route').setData(routeGeometry);
+                return;
+            }
+
+            map.addSource('navigation-route', {
+                type: 'geojson',
+                data: routeGeometry
+            });
+
+            map.addLayer({
+                id: 'navigation-route',
+                type: 'line',
+                source: 'navigation-route',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#1a73e8',
+                    'line-width': 6,
+                    'line-opacity': 0.9
+                }
+            });
+        }
+
+        function updateNavigationHUD(lat, lng) {
+            if (!currentDestination) {
+                document.getElementById('hud-street').innerText = 'Set a destination';
+                document.getElementById('hud-direction').innerText = 'TAP MENU';
+                document.getElementById('hud-arrow').innerText = '◎';
+                document.getElementById('hud-eta').innerText = '-- min';
+                document.getElementById('hud-details').innerText = '-- km • ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return;
+            }
+
+            var distanceKm = getDistance(lat, lng, currentDestination.lat, currentDestination.lng);
+            var bearing = getBearing(lat, lng, currentDestination.lat, currentDestination.lng);
+
+            // Update with destination name and turn instruction
+            document.getElementById('hud-street').innerText = currentDestination.name;
+
+            // Show distance instead of just direction
+            var distanceText = distanceKm < 0.1 ? 'Arriving' : Math.round(distanceKm * 1000) + ' m';
+            document.getElementById('hud-direction').innerText = distanceText;
+
+            document.getElementById('hud-arrow').innerText = arrowFromBearing(bearing);
+            document.getElementById('hud-eta').innerText = Math.max(1, Math.round(distanceKm * 2)) + ' min';
+            document.getElementById('hud-details').innerText = distanceKm.toFixed(1) + ' km • ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function searchAddress() {
+            var query = document.getElementById('address-search').value.trim();
+            if (!query) return;
+
+            var geocodeUrl = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' +
+                encodeURIComponent(query) + '.json?access_token=' + mapboxgl.accessToken +
+                '&autocomplete=true&limit=1';
+
+            fetch(geocodeUrl)
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (!data.features || !data.features.length) {
+                        alert('Address not found. Try a different query.');
+                        return;
+                    }
+
+                    var feature = data.features[0];
+                    currentDestination = {
+                        lng: feature.center[0],
+                        lat: feature.center[1],
+                        placeName: feature.place_name,
+                        name: feature.center[1].toFixed(6) + ', ' + feature.center[0].toFixed(6)
+                    };
+
+                    updateDestinationMarker();
+                    if (driverMarker) {
+                        var currentPos = driverMarker.getLngLat();
+                        drawSimpleRoute([currentPos.lng, currentPos.lat], [currentDestination.lng, currentDestination.lat]);
+                    }
+                    document.getElementById('hud-street').innerText = currentDestination.name;
+                })
+                .catch(function (error) {
+                    console.warn('Geocoding request failed:', error);
+                    alert('Unable to search address right now.');
+                });
+        }
+
+        function updateDestinationMarker() {
+            if (!currentDestination) return;
+
+            if (!destinationMarker) {
+                var destEl = document.createElement('div');
+                destEl.style.width = '38px';
+                destEl.style.height = '38px';
+                destEl.style.borderRadius = '50%';
+                destEl.style.background = '#34a853';
+                destEl.style.border = '3px solid white';
+                destEl.style.boxShadow = '0 6px 16px rgba(0,0,0,0.25)';
+                destEl.style.display = 'flex';
+                destEl.style.alignItems = 'center';
+                destEl.style.justifyContent = 'center';
+                destEl.style.color = '#fff';
+                destEl.style.fontWeight = '700';
+                destEl.innerText = 'D';
+
+                destinationMarker = new mapboxgl.Marker(destEl)
+                    .setLngLat([currentDestination.lng, currentDestination.lat])
+                    .addTo(map);
+            } else {
+                destinationMarker.setLngLat([currentDestination.lng, currentDestination.lat]);
+            }
+        }
+
+        function relockCameraToDriver() {
+            isCameraLocked = true;
+            if (!driverMarker) return;
+
+            var loc = driverMarker.getLngLat();
+            map.easeTo({
+                center: [loc.lng, loc.lat],
+                pitch: (currentPerspective === '3D') ? 55 : 0,
+                zoom: 18.5,
+                duration: 600
+            });
+        }
+
+        function cardinalFromBearing(bearing) {
+            var directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            var index = Math.round(bearing / 45) % 8;
+            return directions[index];
+        }
+
+        function arrowFromBearing(bearing) {
+            var arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+            var index = Math.round(bearing / 45) % 8;
+            return arrows[index];
+        }
+
+        function toRadians(degrees) {
+            return degrees * Math.PI / 180;
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            var R = 6371;
+            var dLat = toRadians(lat2 - lat1);
+            var dLon = toRadians(lon2 - lon1);
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function getBearing(lat1, lon1, lat2, lon2) {
+            var dLon = toRadians(lon2 - lon1);
+            var y = Math.sin(dLon) * Math.cos(toRadians(lat2));
+            var x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
+                Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
+            var brng = Math.atan2(y, x);
+            brng = brng * 180 / Math.PI;
+            return (brng + 360) % 360;
+        }
+
+        // Menu functions for mobile interface
+        function toggleMenu() {
+            var overlay = document.getElementById('menu-overlay');
+            var panel = document.getElementById('menu-panel');
+            overlay.classList.toggle('active');
+            panel.classList.toggle('active');
+        }
+
+        function searchAddressFromMenu() {
+            var query = document.getElementById('menu-address-search').value.trim();
+            if (!query) return;
+
+            var geocodeUrl = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' +
+                encodeURIComponent(query) + '.json?access_token=' + mapboxgl.accessToken +
+                '&autocomplete=true&limit=1';
+
+            fetch(geocodeUrl)
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (!data.features || !data.features.length) {
+                        alert('Address not found. Try a different query.');
+                        return;
+                    }
+
+                    var feature = data.features[0];
+                    currentDestination = {
+                        lng: feature.center[0],
+                        lat: feature.center[1],
+                        placeName: feature.place_name,
+                        name: feature.place_name || (feature.center[1].toFixed(6) + ', ' + feature.center[0].toFixed(6))
+                    };
+
+                    updateDestinationMarker();
+                    if (driverMarker) {
+                        var currentPos = driverMarker.getLngLat();
+                        drawSimpleRoute([currentPos.lng, currentPos.lat], [currentDestination.lng, currentDestination.lat]);
+                    }
+                    document.getElementById('hud-street').innerText = currentDestination.name;
+                    toggleMenu();
+                })
+                .catch(function (error) {
+                    console.warn('Geocoding request failed:', error);
+                    alert('Unable to search address right now.');
+                });
+        }
+
+        function toggleMapStyleFromMenu() {
+            var btn = document.getElementById('satellite-toggle');
+            if (currentStyle === 'streets') {
+                currentStyle = 'satellite';
+                btn.classList.add('active');
+                map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+            } else {
+                currentStyle = 'streets';
+                btn.classList.remove('active');
+                map.setStyle('mapbox://styles/mapbox/streets-v12');
+            }
+
+            map.once('style.load', function () {
+                setupMapLayers();
+            });
+        }
+
+        function togglePerspectiveFromMenu() {
+            var btn = document.getElementById('view-toggle-menu');
+            if (currentPerspective === '3D') {
+                currentPerspective = '2D';
+                btn.classList.remove('active');
+            } else {
+                currentPerspective = '3D';
+                btn.classList.add('active');
+            }
+
+            if (driverMarker && isCameraLocked) {
+                var loc = driverMarker.getLngLat();
+                map.easeTo({
+                    center: [loc.lng, loc.lat],
+                    pitch: (currentPerspective === '3D') ? 55 : 0,
+                    zoom: 18.5,
+                    duration: 800
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
