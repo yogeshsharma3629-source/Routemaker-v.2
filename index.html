@@ -83,7 +83,7 @@
         }
 
         .nav-search {
-            display: flex;
+            display: none;
             gap: 10px;
         }
 
@@ -104,6 +104,149 @@
             color: white;
             cursor: pointer;
             font-weight: bold;
+        }
+
+        .menu-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            cursor: pointer;
+            font-size: 24px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            display: none;
+        }
+
+        .menu-overlay.active {
+            display: block;
+        }
+
+        .menu-panel {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background: white;
+            z-index: 250;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, .2);
+        }
+
+        .menu-panel.active {
+            right: 0;
+        }
+
+        .menu-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .menu-content {
+            padding: 60px 16px 16px;
+        }
+
+        .menu-section {
+            margin-bottom: 24px;
+        }
+
+        .menu-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .menu-search-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .menu-search-input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .menu-search-btn {
+            padding: 10px 16px;
+            background: #34a853;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .menu-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .menu-option-label {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .menu-toggle {
+            width: 50px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        .menu-toggle.active {
+            background: #34a853;
+        }
+
+        .menu-toggle::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+
+        .menu-toggle.active::after {
+            left: 24px;
         }
 
         /* ===========================
@@ -256,18 +399,21 @@
             .nav-header {
                 top: 8px;
                 left: 8px;
-                right: 8px;
-                padding: 12px;
-                gap: 10px;
-                flex-wrap: wrap;
+                right: 56px;
+                padding: 12px 14px;
+                gap: 8px;
+                flex-wrap: nowrap;
             }
 
             .turn-icon-container {
                 font-size: 28px;
+                flex-shrink: 0;
             }
 
             .nav-text-block {
-                width: 100%;
+                width: auto;
+                flex: 1;
+                min-width: 0;
             }
 
             .nav-direction {
@@ -275,11 +421,11 @@
             }
 
             .nav-street {
-                font-size: 18px;
+                font-size: 16px;
             }
 
             .nav-search {
-                width: 100%;
+                display: none;
             }
 
             .search-input {
@@ -291,23 +437,29 @@
                 width: 90px;
             }
 
-            .control-dock {
-                top: auto;
-                bottom: 145px;
+            .menu-btn {
+                position: fixed;
+                top: 12px;
                 right: 12px;
+                width: 48px;
+                height: 48px;
+                z-index: 101;
+            }
+
+            .control-dock {
+                display: none;
             }
 
             .dock-btn {
-                width: 60px;
-                height: 60px;
-                font-size: 24px;
+                display: none;
             }
 
             .btn-recenter {
-                left: 50%;
-                transform: translateX(-50%);
-                bottom: 220px;
-                padding: 15px 22px;
+                left: 12px;
+                bottom: 120px;
+                padding: 12px 16px;
+                font-size: 13px;
+                transform: none;
             }
 
             .nav-bottom-panel {
@@ -373,6 +525,45 @@
         </div>
     </div>
 
+    <button class="menu-btn" onclick="toggleMenu()">⋯</button>
+
+    <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
+
+    <div class="menu-panel" id="menu-panel">
+        <button class="menu-close" onclick="toggleMenu()">✕</button>
+        <div class="menu-content">
+            <div class="menu-section">
+                <div class="menu-section-title">Search Destination</div>
+                <div class="menu-search-group">
+                    <input id="menu-address-search" class="menu-search-input" type="text" placeholder="Enter address"
+                        onkeydown="if(event.key === 'Enter'){ searchAddressFromMenu(); }">
+                    <button class="menu-search-btn" onclick="searchAddressFromMenu()">Go</button>
+                </div>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-section-title">Display Options</div>
+                <div class="menu-option">
+                    <span class="menu-option-label">Satellite View</span>
+                    <button class="menu-toggle" id="satellite-toggle" onclick="toggleMapStyleFromMenu()"></button>
+                </div>
+                <div class="menu-option">
+                    <span class="menu-option-label">3D View</span>
+                    <button class="menu-toggle active" id="view-toggle-menu"
+                        onclick="togglePerspectiveFromMenu()"></button>
+                </div>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-option" style="border-bottom: none; cursor: default;">
+                    <button class="menu-option-label"
+                        style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 24px; cursor: pointer; font-weight: 600;"
+                        onclick="location.reload()">Exit Navigation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="control-dock">
         <button class="dock-btn" id="style-toggle" onclick="toggleMapStyle()"
             title="Toggle Satellite Layer">🗺️</button>
@@ -396,6 +587,7 @@
         var driverMarker = null;
         var destinationMarker = null;
         var isCameraLocked = true;
+        var isAutoMoving = false; // Flag to track automatic movements
         var currentStyle = 'streets'; // 'streets' or 'satellite'
         var currentPerspective = '3D'; // '3D' or '2D'
         var lastRouteGeometry = null;
@@ -424,20 +616,16 @@
 
         // Detect user interactions and unlock camera
         function setupMapInteractionDetection() {
-            map.on('dragstart', function () {
-                isCameraLocked = false;
+            map.on('movestart', function () {
+                if (!isAutoMoving) {
+                    isCameraLocked = false;
+                }
             });
 
-            map.on('wheelzoom', function () {
-                isCameraLocked = false;
-            });
-
-            map.on('touchmove', function () {
-                isCameraLocked = false;
-            });
-
-            map.on('dblclick', function () {
-                isCameraLocked = false;
+            map.on('zoomstart', function () {
+                if (!isAutoMoving) {
+                    isCameraLocked = false;
+                }
             });
         }
 
@@ -568,6 +756,7 @@
                 }
 
                 if (isCameraLocked) {
+                    isAutoMoving = true;
                     map.easeTo({
                         center: [lng, lat],
                         pitch: (currentPerspective === '3D') ? 55 : 0,
@@ -575,6 +764,9 @@
                         bearing: heading,
                         duration: 600
                     });
+                    setTimeout(function () {
+                        isAutoMoving = false;
+                    }, 700);
                 }
 
                 updateNavigationHUD(lat, lng);
@@ -668,9 +860,9 @@
 
         function updateNavigationHUD(lat, lng) {
             if (!currentDestination) {
-                document.getElementById('hud-street').innerText = 'No destination set';
-                document.getElementById('hud-direction').innerText = '--';
-                document.getElementById('hud-arrow').innerText = '⬆';
+                document.getElementById('hud-street').innerText = 'Set a destination';
+                document.getElementById('hud-direction').innerText = 'TAP MENU';
+                document.getElementById('hud-arrow').innerText = '◎';
                 document.getElementById('hud-eta').innerText = '-- min';
                 document.getElementById('hud-details').innerText = '-- km • ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 return;
@@ -679,8 +871,13 @@
             var distanceKm = getDistance(lat, lng, currentDestination.lat, currentDestination.lng);
             var bearing = getBearing(lat, lng, currentDestination.lat, currentDestination.lng);
 
+            // Update with destination name and turn instruction
             document.getElementById('hud-street').innerText = currentDestination.name;
-            document.getElementById('hud-direction').innerText = cardinalFromBearing(bearing);
+
+            // Show distance instead of just direction
+            var distanceText = distanceKm < 0.1 ? 'Arriving' : Math.round(distanceKm * 1000) + ' m';
+            document.getElementById('hud-direction').innerText = distanceText;
+
             document.getElementById('hud-arrow').innerText = arrowFromBearing(bearing);
             document.getElementById('hud-eta').innerText = Math.max(1, Math.round(distanceKm * 2)) + ' min';
             document.getElementById('hud-details').innerText = distanceKm.toFixed(1) + ' km • ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -797,6 +994,90 @@
             var brng = Math.atan2(y, x);
             brng = brng * 180 / Math.PI;
             return (brng + 360) % 360;
+        }
+
+        // Menu functions for mobile interface
+        function toggleMenu() {
+            var overlay = document.getElementById('menu-overlay');
+            var panel = document.getElementById('menu-panel');
+            overlay.classList.toggle('active');
+            panel.classList.toggle('active');
+        }
+
+        function searchAddressFromMenu() {
+            var query = document.getElementById('menu-address-search').value.trim();
+            if (!query) return;
+
+            var geocodeUrl = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' +
+                encodeURIComponent(query) + '.json?access_token=' + mapboxgl.accessToken +
+                '&autocomplete=true&limit=1';
+
+            fetch(geocodeUrl)
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (!data.features || !data.features.length) {
+                        alert('Address not found. Try a different query.');
+                        return;
+                    }
+
+                    var feature = data.features[0];
+                    currentDestination = {
+                        lng: feature.center[0],
+                        lat: feature.center[1],
+                        placeName: feature.place_name,
+                        name: feature.place_name || (feature.center[1].toFixed(6) + ', ' + feature.center[0].toFixed(6))
+                    };
+
+                    updateDestinationMarker();
+                    if (driverMarker) {
+                        var currentPos = driverMarker.getLngLat();
+                        drawSimpleRoute([currentPos.lng, currentPos.lat], [currentDestination.lng, currentDestination.lat]);
+                    }
+                    document.getElementById('hud-street').innerText = currentDestination.name;
+                    toggleMenu();
+                })
+                .catch(function (error) {
+                    console.warn('Geocoding request failed:', error);
+                    alert('Unable to search address right now.');
+                });
+        }
+
+        function toggleMapStyleFromMenu() {
+            var btn = document.getElementById('satellite-toggle');
+            if (currentStyle === 'streets') {
+                currentStyle = 'satellite';
+                btn.classList.add('active');
+                map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+            } else {
+                currentStyle = 'streets';
+                btn.classList.remove('active');
+                map.setStyle('mapbox://styles/mapbox/streets-v12');
+            }
+
+            map.once('style.load', function () {
+                setupMapLayers();
+            });
+        }
+
+        function togglePerspectiveFromMenu() {
+            var btn = document.getElementById('view-toggle-menu');
+            if (currentPerspective === '3D') {
+                currentPerspective = '2D';
+                btn.classList.remove('active');
+            } else {
+                currentPerspective = '3D';
+                btn.classList.add('active');
+            }
+
+            if (driverMarker && isCameraLocked) {
+                var loc = driverMarker.getLngLat();
+                map.easeTo({
+                    center: [loc.lng, loc.lat],
+                    pitch: (currentPerspective === '3D') ? 55 : 0,
+                    zoom: 18.5,
+                    duration: 800
+                });
+            }
         }
     </script>
 </body>
