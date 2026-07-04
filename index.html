@@ -419,7 +419,27 @@
         map.on('load', function () {
             setupMapLayers();
             startLive3DNavigationLoop();
+            setupMapInteractionDetection();
         });
+
+        // Detect user interactions and unlock camera
+        function setupMapInteractionDetection() {
+            map.on('dragstart', function () {
+                isCameraLocked = false;
+            });
+
+            map.on('wheelzoom', function () {
+                isCameraLocked = false;
+            });
+
+            map.on('touchmove', function () {
+                isCameraLocked = false;
+            });
+
+            map.on('dblclick', function () {
+                isCameraLocked = false;
+            });
+        }
 
         // Configures structural map layers, bold numbers, and 3D shapes
         function setupMapLayers() {
